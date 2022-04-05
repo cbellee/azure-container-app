@@ -1,11 +1,11 @@
-# container-apps
+# azure-container-app
 Simple container application for the Azure container apps platform
 
 ## Prerequisites
-  - Docker / Docker Desktop
   - Bash Shell (Linux or WSL 2)
   - Azure CLI
   - make
+  - Docker / Docker Desktop (only required for local dapr environment)
 
 ## Azure deployment
 The bicep template deployment creates the following Azure resources
@@ -15,19 +15,20 @@ The bicep template deployment creates the following Azure resources
 - 1 x Azure Container App environment
 - 2 x Azure Container Apps
 
-### clone the repo
+Clone the repo
 - `$ git clone git@github.com:cbellee/container-apps.git`
-### deploy the infrastructure 
-  - `$ make deploy`
-### build & push the container images
-  - `& make build_and_push`
 
-### test the api
-- `$ make test_api`
+Build & push the container images
+  - `$ make build`
 
-## local deployment with Azure backend
-### install dapr
-- `$ make deploy && make build_local && make run_local`
+Deploy the infrastructure 
+  - `& make deploy`
 
-### test the api
-- `$ make test_api_local`
+Test API
+- `$ make test`
+
+(Optional) Local dapr deployment with Azure backend 
+- `$ make build_local && make deploy_local`
+
+(Optional) Test local API 
+- `$ make test_local`

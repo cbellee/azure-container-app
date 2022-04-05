@@ -1,28 +1,29 @@
 param location string = resourceGroup().location
 param imageTag string
+param acrName string
 param tags object = {
   environment: 'dev'
   costcode: '1234567890'
 }
 
-var frontEndContainerImage = '${acrModule.outputs.registryLoginServer}/frontend:${imageTag}'
-var backendContainerImage = '${acrModule.outputs.registryLoginServer}/backend:${imageTag}'
+var frontEndContainerImage = '${acr.properties.loginServer}/frontend:${imageTag}'
+var backendContainerImage = '${acr.properties.loginServer}/backend:${imageTag}'
+var acrLoginServer = '${acrName}.azurecr.io'
+var acrAdminPassword = listCredentials(acr.id, '2021-12-01-preview').passwords[0].value
 var affix = uniqueString(resourceGroup().id)
 var workspaceName = '${affix}-wks'
 var containerAppEnvName = '${affix}-app-env'
 var backendAppName = 'backend'
 var frontendAppName = 'frontend'
-var acrName = '${affix}acr'
 var sbNamespace = 'checkins'
 var cosmosName = '${affix}-cosmosdb'
 var cosmosDbName = 'checkinDb'
 var cosmosPartitionKey = 'user_id'
 var aiName = '${affix}-ai'
-var acrLoginName = acrModule.outputs.registryName
 var secrets = [
   {
     name: 'registry-password'
-    value: acrModule.outputs.registryPassword
+    value: acrAdminPassword
   }
 ]
 
@@ -34,17 +35,14 @@ module aiModule 'modules/ai.bicep' = {
   }
 }
 
-module acrModule 'modules/acr.bicep' = {
-  name: 'acrDeployment'
-  params: {
-    tags: tags
-    acrName: acrName
-  }
+resource acr 'Microsoft.ContainerRegistry/registries@2021-12-01-preview' existing = {
+  name: acrName
 }
 
 module wksModule 'modules/wks.bicep' = {
   name: 'wksDeployment'
   params: {
+    location: location
     name: workspaceName
     tags: tags
   }
@@ -62,6 +60,7 @@ module cosmosModule 'modules/cosmosdb.bicep' = {
   name: 'cosmosDeployment'
   params: {
     name: cosmosName
+    location: location
     dbName: cosmosDbName
     partitionKey: cosmosPartitionKey
     tags: tags
@@ -107,8 +106,8 @@ resource frontEndApp 'Microsoft.App/containerApps@2022-01-01-preview' = {
       registries: [
         {
           passwordSecretRef: 'registry-password'
-          server: acrName
-          username: acrLoginName
+          server: acrLoginServer
+          username: acr.name
         }
       ]
       ingress: {
@@ -154,7 +153,7 @@ resource frontEndApp 'Microsoft.App/containerApps@2022-01-01-preview' = {
         }
       ]
       scale: {
-        minReplicas: 0
+        minReplicas: 1
         maxReplicas: 10
       }
     }
@@ -175,8 +174,8 @@ resource backEndApp 'Microsoft.App/containerApps@2022-01-01-preview' = {
       registries: [
         {
           passwordSecretRef: 'registry-password'
-          server: acrName
-          username: acrLoginName
+          server: acrLoginServer
+          username: acr.name
         }
       ]
       dapr: {
@@ -228,7 +227,7 @@ resource backEndApp 'Microsoft.App/containerApps@2022-01-01-preview' = {
         }
       ]
       scale: {
-        minReplicas: 0
+        minReplicas: 1
         maxReplicas: 10
       }
     }

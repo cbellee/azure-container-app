@@ -1,20 +1,19 @@
-param acrName string 
-param tags object
+param location string = resourceGroup().location
+param anonymousPullEnabled bool = false
 
-resource acr 'Microsoft.ContainerRegistry/registries@2020-11-01-preview' = {
+var affix = uniqueString(resourceGroup().id)
+var acrName = '${affix}acr'
+
+resource acr 'Microsoft.ContainerRegistry/registries@2021-12-01-preview' = {
   name: acrName
-  location: resourceGroup().location
-  tags: tags
+  location: location
   sku: {
     name: 'Standard'
   }
   properties: {
     adminUserEnabled: true
-    anonymousPullEnabled: true
+    anonymousPullEnabled: anonymousPullEnabled
   }
 }
 
-output registryName string = acr.name
-output registryLoginServer string = acr.properties.loginServer
-output registryPassword string = listCredentials(acr.id, '2020-11-01-preview').passwords[0].value
-output registryResourceId string = acr.id
+output acrName string = acr.name

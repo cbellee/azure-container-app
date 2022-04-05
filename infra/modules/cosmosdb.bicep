@@ -1,17 +1,18 @@
+param location string = resourceGroup().location
 param name string
 param dbName string = 'checkins'
 param tags object
 param partitionKey string = 'user_id'
 
 resource cs 'Microsoft.DocumentDB/databaseAccounts@2021-06-15' = {
-  location: resourceGroup().location
+  location: location
   kind: 'GlobalDocumentDB'
   name: name
   tags: tags
   properties: {
     locations: [
       {
-        locationName: resourceGroup().location
+        locationName: location
         isZoneRedundant: false
       }
     ]
@@ -25,7 +26,7 @@ resource db 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2021-06-15' = {
   name: dbName
   parent: cs
   tags: tags
-  location: resourceGroup().location
+  location: location
   properties: {
     resource: {
       id: dbName
@@ -40,7 +41,7 @@ resource db 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2021-06-15' = {
 
 resource container 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2021-06-15' = {
   name: 'default'
-  location: resourceGroup().location
+  location: location
   parent: db
   properties: {
     options: {

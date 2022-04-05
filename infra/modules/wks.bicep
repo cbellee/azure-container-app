@@ -1,3 +1,4 @@
+param location string = resourceGroup().location
 param name string
 param tags object
 param retentionInDays int = 30
@@ -9,7 +10,7 @@ param retentionInDays int = 30
 param sku string = 'Standard'
 
 resource wks 'Microsoft.OperationalInsights/workspaces@2021-06-01' = {
-  location: resourceGroup().location
+  location: location
   name: name
   tags: tags
   properties: {
