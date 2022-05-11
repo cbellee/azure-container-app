@@ -1,33 +1,30 @@
-param location string
+param spokeLocation string
+param hubLocation string
 param imageTag string
 param acrName string
+param dbAdminUserName string
+param dbAdminPassword string
+param dbSizeGB int = 32
 param tags object = {
   environment: 'dev'
   costcode: '1234567890'
 }
 
-var prefix = uniqueString(resourceGroup().id)
-
-var containerAppEnvName = '${prefix}-app-env'
 var frontEndContainerImage = '${acr.properties.loginServer}/frontend:${imageTag}'
 var backendContainerImage = '${acr.properties.loginServer}/backend:${imageTag}'
-var backendAppName = 'backend'
-var frontendAppName = 'frontend'
-var frontendAppPort = '80'
-var backendAppPort = '81'
-var sbBindingName = 'servicebus'
-var cosmosBindingName = 'cosmosdb'
-
 var acrLoginServer = '${acrName}.azurecr.io'
 var acrAdminPassword = listCredentials(acr.id, '2021-12-01-preview').passwords[0].value
-
-var workspaceName = '${prefix}-wks'
-
+var affix = uniqueString(resourceGroup().id)
+var workspaceName = '${affix}-wks'
+var containerAppEnvName = '${affix}-app-env'
+var backendAppName = 'backend'
+var frontendAppName = 'frontend'
 var sbNamespace = 'checkins'
-var cosmosName = '${prefix}-cosmosdb'
+var cosmosName = '${affix}-cosmosdb'
 var cosmosDbName = 'checkinDb'
 var cosmosPartitionKey = 'user_id'
-var aiName = '${prefix}-ai'
+var aiName = '${affix}-ai'
+var suffix = uniqueString(resourceGroup().id)
 var secrets = [
   {
     name: 'registry-password'
@@ -35,10 +32,63 @@ var secrets = [
   }
 ]
 
+module hubVnetModule 'modules/vnet.bicep' = {
+  name: 'module-hub-vnet'
+  params: {
+    location: hubLocation
+    vnetName: 'hub-vnet-${suffix}'
+    addressSpace: '10.0.0.0/16'
+    subnets: [
+      {
+        name: 'DBSubnet'
+        addressPrefix: '10.0.0.0/24'
+        delegations: [
+          {
+            name: 'app-server-delegation'
+            properties: {
+              serviceName: 'Microsoft.DBforPostgreSQL/flexibleServers'
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+
+module spokeVnetModule 'modules/vnet.bicep' = {
+  name: 'module-spoke-vnet'
+  params: {
+    location: spokeLocation
+    vnetName: 'spoke-vnet-${suffix}'
+    addressSpace: '10.1.0.0/16'
+    subnets: [
+      {
+        name: 'ControlPlaneSubnet'
+        addressPrefix: '10.1.8.0/21'
+        delegations: null
+      }
+      {
+        name: 'AppSubnet'
+        addressPrefix: '10.1.16.0/21'
+        delegations: null
+      }
+    ]
+  }
+}
+
+module peeringModule 'modules/peering.bicep' = {
+  name: 'module-peering'
+  params: {
+    vNets: concat(array(hubVnetModule.outputs.vnet), array(spokeVnetModule.outputs.vnet))
+    suffix: suffix
+    isGatewayDeployed: false
+  }
+}
+
 module aiModule 'modules/ai.bicep' = {
   name: 'aiDeployment'
   params: {
-    location: location
+    location: spokeLocation
     aiName: aiName
   }
 }
@@ -50,7 +100,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2021-12-01-preview' existin
 module wksModule 'modules/wks.bicep' = {
   name: 'wksDeployment'
   params: {
-    location: location
+    location: spokeLocation
     name: workspaceName
     tags: tags
   }
@@ -59,7 +109,7 @@ module wksModule 'modules/wks.bicep' = {
 module sbModule 'modules/sbus.bicep' = {
   name: 'sbDeployment'
   params: {
-    location: location
+    location: spokeLocation
     name: sbNamespace
     tags: tags
   }
@@ -69,18 +119,73 @@ module cosmosModule 'modules/cosmosdb.bicep' = {
   name: 'cosmosDeployment'
   params: {
     name: cosmosName
-    location: location
+    location: spokeLocation
     dbName: cosmosDbName
     partitionKey: cosmosPartitionKey
     tags: tags
   }
 }
 
-resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' = {
-  location: location
+// create private DNS zones
+resource postGreSQLPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+  name: '${spokeLocation}.postgres.database.azure.com'
+  location: 'global'
+}
+
+// link DNS zones to vnets
+resource spokeToHubPrivateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  name: '${spokeLocation}-to-${hubLocation}-vnet-link'
+  location: 'global'
+  parent: postGreSQLPrivateDnsZone
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: spokeVnetModule.outputs.vnet.id
+    }
+  }
+}
+
+resource hubToSpokeDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  name: '${hubLocation}-to-${spokeLocation}-vnet-link'
+  location: 'global'
+  parent: postGreSQLPrivateDnsZone
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: hubVnetModule.outputs.vnet.id
+    }
+  }
+}
+
+// PostGeSQL server & database
+module postGreSQLModule './modules/postgesql-flex.bicep' = {
+  dependsOn: [
+    hubToSpokeDnsZoneLink
+    spokeToHubPrivateDnsZoneLink
+  ]
+  name: 'module-postgresql'
+  params: {
+    adminLoginName: dbAdminUserName
+    adminPassword: dbAdminPassword
+    postGreSQLDbName: 'checkindb'
+    storageSizeGB: dbSizeGB
+    dnsZoneId: postGreSQLPrivateDnsZone.id
+    location: hubLocation
+    name: 'postgresql-${suffix}'
+    subnetId: hubVnetModule.outputs.vnet.subnets[0].id
+  }
+}
+
+resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-01-01-preview' = {
+  location: spokeLocation
   name: containerAppEnvName
   properties: {
     daprAIInstrumentationKey: aiModule.outputs.aiKey
+    vnetConfiguration: {
+      infrastructureSubnetId: spokeVnetModule.outputs.vnet.subnets[0].id
+      runtimeSubnetId: spokeVnetModule.outputs.vnet.subnets[1].id
+      internal: false
+    }
     appLogsConfiguration: {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
@@ -92,9 +197,9 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' 
   tags: tags
 }
 
-resource frontEndApp 'Microsoft.App/containerApps@2022-03-01' = {
+resource frontEndApp 'Microsoft.App/containerApps@2022-01-01-preview' = {
   name: frontendAppName
-  location: location
+  location: spokeLocation
   tags: tags
   identity: {
     type: 'SystemAssigned'
@@ -104,7 +209,7 @@ resource frontEndApp 'Microsoft.App/containerApps@2022-03-01' = {
       activeRevisionsMode: 'single'
       dapr: {
         appId: frontendAppName
-        appPort: int(frontendAppPort)
+        appPort: 80
         appProtocol: 'http'
         enabled: true
       }
@@ -118,7 +223,7 @@ resource frontEndApp 'Microsoft.App/containerApps@2022-03-01' = {
       ]
       ingress: {
         external: true
-        targetPort: int(frontendAppPort)
+        targetPort: 80
         traffic: [
           {
             latestRevision: true
@@ -145,11 +250,11 @@ resource frontEndApp 'Microsoft.App/containerApps@2022-03-01' = {
             }
             {
               name: 'SERVICE_PORT'
-              value: frontendAppPort
+              value: '80'
             }
             {
               name: 'QUEUE_BINDING_NAME'
-              value: sbBindingName
+              value: 'servicebus'
             }
             {
               name: 'QUEUE_NAME'
@@ -166,9 +271,9 @@ resource frontEndApp 'Microsoft.App/containerApps@2022-03-01' = {
   }
 }
 
-resource backEndApp 'Microsoft.App/containerApps@2022-03-01' = {
+resource backEndApp 'Microsoft.App/containerApps@2022-01-01-preview' = {
   name: backendAppName
-  location: location
+  location: spokeLocation
   tags: tags
   identity: {
     type: 'SystemAssigned'
@@ -186,13 +291,13 @@ resource backEndApp 'Microsoft.App/containerApps@2022-03-01' = {
       ]
       dapr: {
         appId: backendAppName
-        appPort: int(backendAppPort)
+        appPort: 81
         appProtocol: 'http'
         enabled: true
       }
       ingress: {
         external: false
-        targetPort: int(backendAppPort)
+        targetPort: 81
         traffic: [
           {
             latestRevision: true
@@ -219,15 +324,15 @@ resource backEndApp 'Microsoft.App/containerApps@2022-03-01' = {
             }
             {
               name: 'SERVICE_PORT'
-              value: backendAppPort
+              value: '81'
             }
             {
               name: 'QUEUE_BINDING_NAME'
-              value: sbBindingName
+              value: 'servicebus'
             }
             {
               name: 'STORE_BINDING_NAME'
-              value: cosmosBindingName
+              value: 'cosmosdb'
             }
           ]
         }
@@ -240,14 +345,14 @@ resource backEndApp 'Microsoft.App/containerApps@2022-03-01' = {
   }
 }
 
-resource serviceBusDaprComponent 'Microsoft.App/managedEnvironments/daprComponents@2022-03-01' = {
-  name: sbBindingName
+resource serviceBusDaprComponent 'Microsoft.App/managedEnvironments/daprComponents@2022-01-01-preview' = {
+  name: 'servicebus'
   parent: containerAppEnvironment
   properties: {
     componentType: 'bindings.azure.servicebusqueues'
     version: 'v1'
     ignoreErrors: false
-    initTimeout: '60s'
+    initTimeout: '5s'
     metadata: [
       {
         name: 'connectionString'
@@ -263,14 +368,14 @@ resource serviceBusDaprComponent 'Microsoft.App/managedEnvironments/daprComponen
       }
     ]
     scopes: [
-      frontendAppName
-      backendAppName
+      frontEndApp.name
+      backEndApp.name
     ]
   }
 }
 
-resource cosmosDbDaprComponent 'Microsoft.App/managedEnvironments/daprComponents@2022-03-01' = {
-  name: cosmosBindingName
+resource cosmosDbDaprComponent 'Microsoft.App/managedEnvironments/daprComponents@2022-01-01-preview' = {
+  name: 'cosmosdb'
   parent: containerAppEnvironment
   properties: {
     componentType: 'bindings.azure.cosmosdb'
@@ -300,7 +405,7 @@ resource cosmosDbDaprComponent 'Microsoft.App/managedEnvironments/daprComponents
       }
     ]
     scopes: [
-      backendAppName
+      backEndApp.name
     ]
   }
 }

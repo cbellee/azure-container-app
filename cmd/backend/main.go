@@ -27,6 +27,11 @@ var (
 func main() {
 	logger.Printf("### Dapr: %v v%v starting...", serviceName, version)
 
+	logger.Printf("env var: 'serviceName: %s", serviceName)
+	logger.Printf("env var: 'servicePort: %s", servicePort)
+	logger.Printf("env var: 'queueBindingName: %s", queueBindingName)
+	logger.Printf("env var: 'storeBindingName: %s", storeBindingName)
+
 	port := fmt.Sprintf(":%s", servicePort)
 	server := daprd.NewService(port)
 

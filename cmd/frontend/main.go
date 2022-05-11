@@ -30,14 +30,19 @@ func main() {
 	port := fmt.Sprintf(":%s", servicePort)
 	server := daprd.NewService(port)
 
+	logger.Printf("env var: 'serviceName: %s", serviceName)
+	logger.Printf("env var: 'servicePort: %s", servicePort)
+	logger.Printf("env var: 'bindingName: %s", bindingName)
+	logger.Printf("env var: 'queueName: %s", queueName)
+
 	if err := server.AddServiceInvocationHandler("/checkin", checkinHandler); err != nil {
 		logger.Panicf("Failed to add service invocation handler '/checkin' : %s", err)
 	} else {
-		logger.Printf("Invocation handler for service '%v' added successfully!", serviceName)
+		logger.Printf("Invocation handler for service '%s' added successfully!", serviceName)
 	}
 
 	if err := server.Start(); err != nil && err != http.ErrServerClosed {
-		logger.Fatalf("error listening: %v", err)
+		logger.Fatalf("error listening: %s", err)
 	}
 }
 

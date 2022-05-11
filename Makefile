@@ -1,11 +1,15 @@
-RG_NAME := 'container-app-dapr-1-rg'
+RG_NAME := 'container-app-dapr-rg'
 LOCATION := 'canadacentral'
 ENVIRONMENT := dev
 VERSION := 0.1.0
 TAG := ${ENVIRONMENT}-${VERSION}
+DB_ADMIN_USERNAME := dbadmin
+DB_ADMIN_PASSWORD := 'M1cr0soft1234567890'
+
+rg:
+	az group create --location ${SPOKE_LOCATION} --name ${RG_NAME}
 
 build:
-	# deploy acr
 	az deployment group create \
 		--resource-group ${RG_NAME} \
 		--name 'acr-deployment' \
@@ -16,12 +20,11 @@ build:
 	az acr build -r $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv) -t $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv)/backend:${TAG} --build-arg SERVICE_NAME="backend"  -f Dockerfile .
 
 deploy:
-	az group create --location ${LOCATION} --name ${RG_NAME}
-
 	az deployment group create \
 		--resource-group ${RG_NAME} \
 		--name 'infra-deployment' \
 		--template-file ./infra/main.bicep \
+		--parameters location=${LOCATION} \
 		--parameters imageTag=${TAG} \
 		--parameters acrName=$(shell az deployment group show --resource-group ${RG_NAME} --name 'acr-deployment' --query properties.outputs.acrName.value -o tsv)
 

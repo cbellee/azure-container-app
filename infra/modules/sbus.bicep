@@ -1,5 +1,6 @@
 param name string
 param skuName string = 'Standard'
+param location string
 param tags object
 param sbQueueName string = 'checkin'
 
@@ -8,7 +9,7 @@ var sasKeyName = 'saskey${name}'
 resource sb 'Microsoft.ServiceBus/namespaces@2021-06-01-preview' = {
   name: name
   tags: tags
-  location: resourceGroup().location
+  location: location
   sku: {
     name: skuName
   }

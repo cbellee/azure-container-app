@@ -27,8 +27,8 @@ Deploy the infrastructure
 Test API
 - `$ make test`
 
-(Optional) Local dapr deployment with Azure backend 
+## Local dapr deployment with Azure backend 
 - `$ make build_local && make deploy_local`
 
-(Optional) Test local API 
+Test local API 
 - `$ make test_local`
