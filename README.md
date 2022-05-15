@@ -3,17 +3,17 @@ Simple container application for the Azure container apps platform
 
 ## Prerequisites
   - Bash Shell (Linux or WSL 2)
-  - (Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+  - [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
   - [make](http://www.gnu.org/software/make/)
   - [jq](https://stedolan.github.io/jq/)
 
 ## Azure deployment
 The bicep template deployment creates the following Azure resources
 - 1 x CosmosDB account, SQL database & container
-- 1 x Azure Servicebus namespace & topic
+- 1 x Azure Servicebus namespace & 1 x queue
 - 1 x Azure Container Registry
 - 1 x Azure Container App environment
-- 2 x Azure Container Apps
+- 2 x Azure Container Apps ('frontend' & 'backend')
 
 Clone the repo
 - `$ git clone git@github.com:cbellee/container-apps.git`
