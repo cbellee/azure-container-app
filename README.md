@@ -25,22 +25,14 @@ Deploy the infrastructure
   - `& make deploy`
 
 Test API
-- `$ make test`
+  - `$ make test`
 
 ## Local dapr deployment with Azure backend 
-Add new file ./components/secrets.json with following contents (replace asterix with secrets)
-```
-{
-    "servicebus": {
-        "connectionString": "Endpoint=sb://*.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=*"
-    },
-    "cosmosdb": {
-        "connectionString": "https://*.documents.azure.com:443/",
-        "key": "***"
-    }
-}
-```
-- `$ make build_local && make deploy_local`
+Deploy the Azure backend resources 
+  - `$ make deploy_rg && make build && make deploy`
+
+Build and deploy the applications as executables locally in the Dapr CLI environment
+  - `$ make build_local && make deploy_local`
 
 Test local API 
-- `$ make test_local`
+  - `$ make test_local`
