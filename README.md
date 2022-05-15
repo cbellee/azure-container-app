@@ -3,9 +3,9 @@ Simple container application for the Azure container apps platform
 
 ## Prerequisites
   - Bash Shell (Linux or WSL 2)
-  - Azure CLI
-  - make
-  - Docker / Docker Desktop (only required for local dapr environment)
+  - (Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+  - [make](http://www.gnu.org/software/make/)
+  - [jq](https://stedolan.github.io/jq/)
 
 ## Azure deployment
 The bicep template deployment creates the following Azure resources
