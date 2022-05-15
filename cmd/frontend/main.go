@@ -26,7 +26,7 @@ var (
 )
 
 func main() {
-	logger.Printf("Starting service : %v v%v...", serviceName, version)
+	logger.Printf("starting service : %v v%v...", serviceName, version)
 
 	port := fmt.Sprintf(":%s", servicePort)
 	server := daprd.NewService(port)
@@ -38,9 +38,9 @@ func main() {
 	logger.Printf("queueName: %s", queueName)
 
 	if err := server.AddServiceInvocationHandler("/checkin", checkinHandler); err != nil {
-		logger.Panicf("Failed to add service invocation handler '/checkin' : %s", err)
+		logger.Panicf("failed to add service invocation handler '/checkin' : %s", err)
 	} else {
-		logger.Printf("Invocation handler for service '%s' added successfully!", serviceName)
+		logger.Printf("invocation handler for service '%s' added successfully!", serviceName)
 	}
 
 	if err := server.Start(); err != nil && err != http.ErrServerClosed {
@@ -58,9 +58,8 @@ func checkinHandler(ctx context.Context, in *common.InvocationEvent) (out *commo
 	
 	client, err := dapr.NewClient()
 	if err != nil {
-		logger.Panicf("Failed to create Dapr client: %s", err)
+		logger.Panicf("failed to create Dapr client: %s", err)
 	}
-	//defer client.Close()
 
 	logger.Printf("echo - ContentType:%s, Verb:%s, QueryString:%s, %s", in.ContentType, in.Verb, in.QueryString, in.Data)
 
@@ -77,10 +76,10 @@ func checkinHandler(ctx context.Context, in *common.InvocationEvent) (out *commo
 	}
 
 	if err := client.InvokeOutputBinding(ctx, br); err != nil {
-		logger.Panicf("Failed to send event to queue '%s' : %s", queueName, err)
+		logger.Panicf("failed to send event to queue '%s' : %s", queueName, err)
 		return nil, err
 	} else {
-		logger.Printf("Successfully sent event to queue %s", queueName)
+		logger.Printf("successfully sent event to queue %s", queueName)
 	}
 
 	return out, nil

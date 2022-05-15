@@ -7,6 +7,8 @@ DB_ADMIN_USERNAME := dbadmin
 DB_ADMIN_PASSWORD := 'M1cr0soft1234567890'
 FRONTEND_PORT="80"
 BACKEND_PORT="81"
+LOCAL_FRONTEND_PORT="8000"
+LOCAL_BACKEND_PORT="8001"
 
 deploy_rg:
 	az group create --location ${LOCATION} --name ${RG_NAME}
@@ -45,16 +47,16 @@ deploy_local:
 	export SERVICE_PORT="8000"; \
 	export QUEUE_BINDING_NAME="servicebus"; \
 	export QUEUE_NAME="checkin"; \
-	dapr run --app-id frontend --app-port 8000 ./cmd/frontend/frontend --components-path ./components --log-level debug &
+	dapr run --app-id frontend --app-port ${LOCAL_FRONTEND_PORT} ./cmd/frontend/frontend --components-path ./components --log-level debug &
 
 	export SERVICE_NAME="backend"; \
 	export SERVICE_PORT="8001"; \
 	export QUEUE_BINDING_NAME="servicebus"; \
 	export STORE_BINDING_NAME="cosmosdb"; \
-	dapr run --app-id backend --app-port 8001 ./cmd/backend/backend --components-path ./components --log-level debug &
+	dapr run --app-id backend --app-port ${LOCAL_BACKEND_PORT} ./cmd/backend/backend --components-path ./components --log-level debug &
 
 test:
 	curl "https://$(shell az deployment group show --resource-group ${RG_NAME} --name 'infra-deployment' --query properties.outputs.frontendFqdn.value -o tsv)/checkin" -d '{"user_id":"777","location_id":"77"}'
 
 test_local:
-	curl http://localhost:8000/checkin -d '{"user_id":"123","location_id":"5"}'
+	curl http://localhost:${LOCAL_FRONTEND_PORT}/checkin -d '{"user_id":"123","location_id":"5"}'

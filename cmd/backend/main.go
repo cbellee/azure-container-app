@@ -26,7 +26,7 @@ var (
 )
 
 func main() {
-	logger.Printf("### Dapr: %v v%v starting...", serviceName, version)
+	logger.Printf("starting service: %v v%v starting...", serviceName, version)
 
 	logger.Printf("serviceName: %s", serviceName)
 	logger.Printf("servicePort: %s", servicePort)
@@ -69,9 +69,8 @@ func saveCheckin(ctx context.Context, in *models.Checkin) (retry bool, err error
 	// create dapr client
 	client, err := dapr.NewClient()
 	if err != nil {
-		logger.Panicf("Failed to create Dapr client: %s", err)
+		logger.Panicf("failed to create Dapr client: %s", err)
 	}
-	//defer client.Close()
 
 	ctx = context.Background()
 
