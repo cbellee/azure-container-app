@@ -7,8 +7,9 @@ import (
 	"log"
 	"os"
 
-	"github.com/dapr/go-sdk/service/common"
 	"models"
+
+	"github.com/dapr/go-sdk/service/common"
 	"github.com/google/uuid"
 
 	dapr "github.com/dapr/go-sdk/client"
@@ -20,17 +21,17 @@ var (
 	serviceName      = os.Getenv("SERVICE_NAME")       //"backend"
 	servicePort      = os.Getenv("SERVICE_PORT")       //"81"
 	queueBindingName = os.Getenv("QUEUE_BINDING_NAME") //"servicebus"
-	storeBindingName = os.Getenv("STORE_BINDING_NAME") //"cosmosdb.store.binding"
+	storeBindingName = os.Getenv("STORE_BINDING_NAME") //"cosmosdb"
 	logger           = log.New(os.Stdout, "", 0)
 )
 
 func main() {
 	logger.Printf("### Dapr: %v v%v starting...", serviceName, version)
 
-	logger.Printf("env var: 'serviceName: %s", serviceName)
-	logger.Printf("env var: 'servicePort: %s", servicePort)
-	logger.Printf("env var: 'queueBindingName: %s", queueBindingName)
-	logger.Printf("env var: 'storeBindingName: %s", storeBindingName)
+	logger.Printf("serviceName: %s", serviceName)
+	logger.Printf("servicePort: %s", servicePort)
+	logger.Printf("queueBindingName: %s", queueBindingName)
+	logger.Printf("storeBindingName: %s", storeBindingName)
 
 	port := fmt.Sprintf(":%s", servicePort)
 	server := daprd.NewService(port)
@@ -46,6 +47,8 @@ func main() {
 
 func checkinHandler(ctx context.Context, e *common.BindingEvent) (out []byte, err error) {
 	logger.Printf("event - Data: %s, MetaData: %s", e.Data, e.Metadata)
+
+	ctx = context.Background()
 
 	var checkin models.Checkin
 	if err := json.Unmarshal(e.Data, &checkin); err != nil {
@@ -63,12 +66,14 @@ func checkinHandler(ctx context.Context, e *common.BindingEvent) (out []byte, er
 }
 
 func saveCheckin(ctx context.Context, in *models.Checkin) (retry bool, err error) {
-
 	// create dapr client
 	client, err := dapr.NewClient()
 	if err != nil {
 		logger.Panicf("Failed to create Dapr client: %s", err)
 	}
+	//defer client.Close()
+
+	ctx = context.Background()
 
 	bytArr, err := json.Marshal(in)
 	if err != nil {

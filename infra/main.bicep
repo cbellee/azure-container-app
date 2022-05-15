@@ -1,6 +1,8 @@
 param location string
 param imageTag string
 param acrName string
+param frontendAppPort string
+param backendAppPort string
 param tags object = {
   environment: 'dev'
   costcode: '1234567890'
@@ -13,8 +15,6 @@ var frontEndContainerImage = '${acr.properties.loginServer}/frontend:${imageTag}
 var backendContainerImage = '${acr.properties.loginServer}/backend:${imageTag}'
 var backendAppName = 'backend'
 var frontendAppName = 'frontend'
-var frontendAppPort = '80'
-var backendAppPort = '81'
 var sbBindingName = 'servicebus'
 var cosmosBindingName = 'cosmosdb'
 
@@ -76,7 +76,19 @@ module cosmosModule 'modules/cosmosdb.bicep' = {
   }
 }
 
-resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' = {
+module containerAppEnvModule './modules/cappenv.bicep' = {
+  name: 'cappDeployment'
+  params: {
+    name: containerAppEnvName
+    location: location
+    tags: tags
+    wksSharedKey: wksModule.outputs.workspaceSharedKey
+    aiKey: aiModule.outputs.aiKey
+    wksCustomerId: wksModule.outputs.workspaceCustomerId
+  }
+}
+
+/* resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' = {
   location: location
   name: containerAppEnvName
   properties: {
@@ -91,6 +103,7 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2022-03-01' 
   }
   tags: tags
 }
+ */
 
 resource frontEndApp 'Microsoft.App/containerApps@2022-03-01' = {
   name: frontendAppName
@@ -99,6 +112,11 @@ resource frontEndApp 'Microsoft.App/containerApps@2022-03-01' = {
   identity: {
     type: 'SystemAssigned'
   }
+  dependsOn: [
+    containerAppEnvModule
+    cosmosModule
+    sbModule
+  ]
   properties: {
     configuration: {
       activeRevisionsMode: 'single'
@@ -128,7 +146,7 @@ resource frontEndApp 'Microsoft.App/containerApps@2022-03-01' = {
         transport: 'http'
       }
     }
-    managedEnvironmentId: containerAppEnvironment.id
+    managedEnvironmentId: containerAppEnvModule.outputs.id
     template: {
       containers: [
         {
@@ -173,6 +191,11 @@ resource backEndApp 'Microsoft.App/containerApps@2022-03-01' = {
   identity: {
     type: 'SystemAssigned'
   }
+  dependsOn: [
+    containerAppEnvModule
+    cosmosModule
+    sbModule
+  ]
   properties: {
     configuration: {
       activeRevisionsMode: 'single'
@@ -202,7 +225,7 @@ resource backEndApp 'Microsoft.App/containerApps@2022-03-01' = {
         transport: 'http'
       }
     }
-    managedEnvironmentId: containerAppEnvironment.id
+    managedEnvironmentId: containerAppEnvModule.outputs.id
     template: {
       containers: [
         {
@@ -241,8 +264,7 @@ resource backEndApp 'Microsoft.App/containerApps@2022-03-01' = {
 }
 
 resource serviceBusDaprComponent 'Microsoft.App/managedEnvironments/daprComponents@2022-03-01' = {
-  name: sbBindingName
-  parent: containerAppEnvironment
+  name: '${containerAppEnvName}/${sbBindingName}'
   properties: {
     componentType: 'bindings.azure.servicebusqueues'
     version: 'v1'
@@ -270,8 +292,7 @@ resource serviceBusDaprComponent 'Microsoft.App/managedEnvironments/daprComponen
 }
 
 resource cosmosDbDaprComponent 'Microsoft.App/managedEnvironments/daprComponents@2022-03-01' = {
-  name: cosmosBindingName
-  parent: containerAppEnvironment
+  name: '${containerAppEnvName}/${cosmosBindingName}'
   properties: {
     componentType: 'bindings.azure.cosmosdb'
     version: 'v1'
@@ -305,5 +326,7 @@ resource cosmosDbDaprComponent 'Microsoft.App/managedEnvironments/daprComponents
   }
 }
 
-output frontendFqdn string = frontEndApp.properties.latestRevisionFqdn
-output backendFqdn string = backEndApp.properties.latestRevisionFqdn
+output frontendFqdn string = frontEndApp.properties.configuration.ingress.fqdn
+output sbConnectionString string = sbModule.outputs.connectionString
+output cosmosEndpoint string = cosmosModule.outputs.endpointUri
+output cosmosKey string = cosmosModule.outputs.masterKey

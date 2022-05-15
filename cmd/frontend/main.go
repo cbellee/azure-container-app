@@ -21,6 +21,7 @@ var (
 	servicePort = os.Getenv("SERVICE_PORT") //"80"
 	bindingName = os.Getenv("QUEUE_BINDING_NAME") //"servicebus"
 	queueName   = os.Getenv("QUEUE_NAME")   //"checkin"
+	bindingOperation = "create"
 	logger      = log.New(os.Stdout, "", 0)
 )
 
@@ -30,10 +31,11 @@ func main() {
 	port := fmt.Sprintf(":%s", servicePort)
 	server := daprd.NewService(port)
 
-	logger.Printf("env var: 'serviceName: %s", serviceName)
-	logger.Printf("env var: 'servicePort: %s", servicePort)
-	logger.Printf("env var: 'bindingName: %s", bindingName)
-	logger.Printf("env var: 'queueName: %s", queueName)
+	logger.Printf("serviceName: %s", serviceName)
+	logger.Printf("servicePort: %s", servicePort)
+	logger.Printf("bindingName: %s", bindingName)
+	logger.Printf("bindingOperation: %s", bindingOperation)
+	logger.Printf("queueName: %s", queueName)
 
 	if err := server.AddServiceInvocationHandler("/checkin", checkinHandler); err != nil {
 		logger.Panicf("Failed to add service invocation handler '/checkin' : %s", err)
@@ -52,10 +54,13 @@ func checkinHandler(ctx context.Context, in *common.InvocationEvent) (out *commo
 		return
 	}
 
+	ctx = context.Background()
+	
 	client, err := dapr.NewClient()
 	if err != nil {
 		logger.Panicf("Failed to create Dapr client: %s", err)
 	}
+	//defer client.Close()
 
 	logger.Printf("echo - ContentType:%s, Verb:%s, QueryString:%s, %s", in.ContentType, in.Verb, in.QueryString, in.Data)
 
@@ -67,7 +72,7 @@ func checkinHandler(ctx context.Context, in *common.InvocationEvent) (out *commo
 
 	br := &dapr.InvokeBindingRequest{
 		Name:      bindingName,
-		Operation: "create",
+		Operation: bindingOperation,
 		Data:      in.Data,
 	}
 

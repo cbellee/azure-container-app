@@ -19,7 +19,7 @@ Clone the repo
 - `$ git clone git@github.com:cbellee/container-apps.git`
 
 Build & push the container images
-  - `$ make build`
+  - `$ make deploy_rg && make build`
 
 Deploy the infrastructure 
   - `& make deploy`
@@ -28,6 +28,18 @@ Test API
 - `$ make test`
 
 ## Local dapr deployment with Azure backend 
+Add new file ./components/secrets.json with following contents (replace asterix with secrets)
+```
+{
+    "servicebus": {
+        "connectionString": "Endpoint=sb://*.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=*"
+    },
+    "cosmosdb": {
+        "connectionString": "https://*.documents.azure.com:443/",
+        "key": "***"
+    }
+}
+```
 - `$ make build_local && make deploy_local`
 
 Test local API 

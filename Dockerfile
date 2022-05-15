@@ -1,6 +1,7 @@
 FROM golang:1.17.5-alpine3.15 AS builder
 
-ARG SERVICE_NAME="from_cmdline"
+ARG SERVICE_NAME=""
+ARG SERVICE_PORT=""
 
 RUN mkdir /build
 WORKDIR /build
@@ -16,11 +17,13 @@ RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on \
 # release container image
 FROM alpine:latest
 
-ARG SERVICE_NAME="from_cmdline"
+ARG SERVICE_NAME=""
+ARG SERVICE_PORT=""
 
 WORKDIR /app
 RUN apk --no-cache add ca-certificates
 COPY --from=builder /build/server .
 
 # run server
+EXPOSE $SERVICE_PORT
 CMD ["./server"]
