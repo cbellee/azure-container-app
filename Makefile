@@ -4,11 +4,13 @@ ENVIRONMENT := dev
 VERSION := 0.1.0
 TAG := ${ENVIRONMENT}-${VERSION}
 DB_ADMIN_USERNAME := dbadmin
-DB_ADMIN_PASSWORD := 'M1cr0soft1234567890'
 FRONTEND_PORT="80"
 BACKEND_PORT="81"
 LOCAL_FRONTEND_PORT="8000"
 LOCAL_BACKEND_PORT="8001"
+
+include .env
+export
 
 deploy_rg:
 	az group create --location ${LOCATION} --name ${RG_NAME}
@@ -19,8 +21,16 @@ build:
 		--name 'acr-deployment' \
 		--parameters anonymousPullEnabled=true \
 		--template-file ./infra/modules/acr.bicep; \
-	az acr build -r $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv) -t $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv)/frontend:${TAG} --build-arg SERVICE_NAME="frontend" --build-arg SERVICE_PORT=${FRONTEND_PORT}  -f Dockerfile .; \
-	az acr build -r $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv) -t $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv)/backend:${TAG} --build-arg SERVICE_NAME="backend" --build-arg SERVICE_PORT=${BACKEND_PORT} -f Dockerfile .;
+		
+	az acr build -r $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv) -t $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv)/frontend:${TAG} \
+		--build-arg SERVICE_NAME="frontend" \
+		--build-arg SERVICE_PORT=${FRONTEND_PORT}  \
+		-f Dockerfile .; \
+
+	az acr build -r $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv) -t $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv)/backend:${TAG} \
+		--build-arg SERVICE_NAME="backend" \
+		--build-arg SERVICE_PORT=${BACKEND_PORT} \
+		-f Dockerfile .;
 
 deploy:
 	az deployment group create \

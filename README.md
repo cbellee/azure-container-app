@@ -1,5 +1,7 @@
-# azure-container-app
-Simple container application for the Azure container apps platform
+# Azure Container App + Dapr
+Simple 2 container + DPR example for the Azure container apps platform
+- frontend: ReST api with dapr invocation input binding & servicebus output binding
+- backend: ReST api with dapr servicebus input binding & cosmosdb output binding
 
 ## Prerequisites
   - Bash Shell (Linux or WSL 2)
