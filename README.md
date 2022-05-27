@@ -1,4 +1,4 @@
-# azure-container-app
+# Azure Container App with Dapr
 Simple container application for the Azure container apps platform
 
 ## Prerequisites
