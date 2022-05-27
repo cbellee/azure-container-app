@@ -1,4 +1,4 @@
-# Azure Container App + Dapr
+# Azure Container App with Dapr
 Simple 2 container + DPR example for the Azure container apps platform
 - frontend: ReST api with dapr invocation input binding & servicebus output binding
 - backend: ReST api with dapr servicebus input binding & cosmosdb output binding
