@@ -21,7 +21,7 @@ build:
 		--name 'acr-deployment' \
 		--parameters anonymousPullEnabled=true \
 		--template-file ./infra/modules/acr.bicep; \
-		
+
 	az acr build -r $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv) -t $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv)/frontend:${TAG} \
 		--build-arg SERVICE_NAME="frontend" \
 		--build-arg SERVICE_PORT=${FRONTEND_PORT}  \
@@ -30,7 +30,7 @@ build:
 	az acr build -r $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv) -t $(shell az acr list -g ${RG_NAME} --query "[].loginServer" -o tsv)/backend:${TAG} \
 		--build-arg SERVICE_NAME="backend" \
 		--build-arg SERVICE_PORT=${BACKEND_PORT} \
-		-f Dockerfile .;
+		-f Dockerfile .
 
 deploy:
 	az deployment group create \
@@ -42,7 +42,6 @@ deploy:
 		--parameters frontendAppPort=${FRONTEND_PORT} \
 		--parameters backendAppPort=${BACKEND_PORT} \
 		--parameters acrName=$(shell az deployment group show --resource-group ${RG_NAME} --name 'acr-deployment' --query properties.outputs.acrName.value -o tsv)
-
 	export SB_CXN_STR=$(shell az deployment group show --resource-group ${RG_NAME} --name 'infra-deployment' --query properties.outputs.sbConnectionString.value); \
 	export COSMOS_ENDPOINT=$(shell az deployment group show --resource-group ${RG_NAME} --name 'infra-deployment' --query properties.outputs.cosmosEndpoint.value); \
 	export COSMOS_KEY=$(shell az deployment group show --resource-group ${RG_NAME} --name 'infra-deployment' --query properties.outputs.cosmosKey.value); \
